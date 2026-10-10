@@ -1,0 +1,9 @@
+{
+  "name": "shopping-website",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Customer-facing shop. Talks ONLY to the load balancer (API_URL).",
+  "type": "module",
+  "scripts": { "dev": "PORT=${PORT:-3000} node dev-server.mjs", "start": "node dev-server.mjs" },
+  "engines": { "node": ">=18" }
+}

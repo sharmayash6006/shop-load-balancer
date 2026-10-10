@@ -1,0 +1,16 @@
+# Shopping website: static files ONLY. It does not proxy anything: the browser calls the load balancer
+# directly at ${API_URL} (CORS-enabled there). This container knows nothing about backends or the LB internals.
+server {
+  listen 80;
+  server_name _;
+  root /usr/share/nginx/html;
+  index index.html;
+
+  add_header X-Content-Type-Options nosniff always;
+  add_header X-Frame-Options DENY always;
+  add_header Referrer-Policy no-referrer always;
+  add_header Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; connect-src 'self' ${API_URL}; frame-ancestors 'none'" always;
+
+  location = /config.js { add_header Cache-Control "no-store" always; }
+  location / { try_files $uri /index.html; }
+}

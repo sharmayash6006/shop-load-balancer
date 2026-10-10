@@ -1,0 +1,9 @@
+{
+  "name": "admin-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Load balancer admin dashboard. Talks ONLY to the load balancer admin API (API_URL/_lb/*).",
+  "type": "module",
+  "scripts": { "dev": "PORT=${PORT:-3001} node dev-server.mjs", "start": "node dev-server.mjs" },
+  "engines": { "node": ">=18" }
+}

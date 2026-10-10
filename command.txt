@@ -1,0 +1,200 @@
+to start all server's and loadbalcer,website and admin
+
+docker compose start backend-1 backend-2 backend-3
+docker compose stop backend-1 backend-2 backend-3
+
+LOAD BALANCER HEALTH
+curl.exe http://localhost:8080/health
+
+LOAD BALANCER READY
+curl.exe http://localhost:8080/ready
+
+PROMETHEUS METRICS
+http://localhost:8080/metrics
+
+SHOPPING WEBSITE
+http://localhost:3000
+
+ADMIN DASHBOARD
+http://localhost:3001/admin/login
+
+Username: admin
+Password: admin123
+
+K6 — LOAD TEST
+docker compose run --rm k6 run /tests/load-test.js
+
+K6 — SMALL LOAD TEST
+docker compose run --rm k6 run /tests/load-test.js
+
+K6 — STRESS TEST
+docker compose run --rm k6 run /tests/stress-test.js
+
+K6 — SPIKE TEST
+docker compose run --rm k6 run /tests/spike-test.js
+
+K6 — FIXED REQUEST TEST
+$env:REQUESTS="10000"
+$env:VUS="100"
+docker compose run --rm k6 run /tests/requests-test.js
+
+DOCKER — START EVERYTHING
+cd "C:\Users\yash sharma\Downloads\shop-lb-project\shop-lb-project"
+docker compose up --build
+
+DOCKER — CHECK SERVICES
+docker compose ps
+
+DOCKER — LOGS
+docker compose logs -f
+
+Load Balancer:
+docker compose logs -f load-balancer
+
+Backends:
+docker compose logs -f backend-1 backend-2 backend-3
+
+DOCKER — START ONE BACKEND
+docker compose up -d --build backend-1
+docker compose up -d --build backend-2
+docker compose up -d --build backend-3
+
+docker compose up -d --build backend-1 backend-2 backend-3
+docker compose stop backend-1 backend-2 backend-3
+
+DATABASE
+Start PostgreSQL:
+docker compose up -d database
+
+Check:
+docker compose ps database
+
+Connect:
+docker compose exec database psql -U shop -d shop
+
+Database:
+Host: localhost
+Port: 5432
+Username: shop
+Password: shop
+Database: shop
+
+CHECK ALL IMPORTANT PORTS
+netstat -ano | findstr LISTENING
+
+Or:
+netstat -ano | findstr ":3000 :3001 :5432 :8001 :8002 :8003 :8080"
+
+Expected:
+3000 → Shopping Website
+3001 → Admin Dashboard
+5432 → PostgreSQL
+8001 → Backend 1
+8002 → Backend 2
+8003 → Backend 3
+8080 → Load Balancer
+
+
+
+
+************************************************************
+
+COMPLETE STARTUP — MANUAL
+Terminal 1
+cd "C:\Users\yash sharma\Downloads\shop-lb-project\shop-lb-project\backend"
+
+$env:DATABASE_URL="postgres://shop:shop@localhost:5432/shop?sslmode=disable"
+$env:JWT_SECRET="my-super-secret-key-2026"
+$env:BCRYPT_COST="10"
+$env:BACKEND_ID="backend-1"
+$env:PORT="8001"
+
+go run ./cmd/server
+
+Terminal 2
+cd "C:\Users\yash sharma\Downloads\shop-lb-project\shop-lb-project\backend"
+
+$env:DATABASE_URL="postgres://shop:shop@localhost:5432/shop?sslmode=disable"
+$env:JWT_SECRET="my-super-secret-key-2026"
+$env:BCRYPT_COST="10"
+$env:BACKEND_ID="backend-2"
+$env:PORT="8002"
+
+go run ./cmd/server
+
+Terminal 3
+cd "C:\Users\yash sharma\Downloads\shop-lb-project\shop-lb-project\backend"
+
+$env:DATABASE_URL="postgres://shop:shop@localhost:5432/shop?sslmode=disable"
+$env:JWT_SECRET="my-super-secret-key-2026"
+$env:BCRYPT_COST="10"
+$env:BACKEND_ID="backend-3"
+$env:PORT="8003"
+
+go run ./cmd/server
+
+Terminal 4 — Load Balancer
+cd "C:\Users\yash sharma\Downloads\shop-lb-project\shop-lb-project\load-balancer"
+
+$env:DATABASE_URL="postgres://shop:shop@localhost:5432/shop?sslmode=disable"
+$env:JWT_SECRET="my-super-secret-key-2026"
+$env:ADMIN_USER="admin"
+$env:ADMIN_PASSWORD="admin123"
+$env:BACKEND_URLS="http://localhost:8001,http://localhost:8002,http://localhost:8003"
+$env:BACKEND_WEIGHTS="5,3,1"
+$env:ALGORITHM="round_robin"
+$env:CORS_ORIGINS="http://localhost:3000,http://localhost:3001"
+
+go run ./cmd/lb
+
+Terminal 5 — Website
+cd "C:\Users\yash sharma\Downloads\shop-lb-project\shop-lb-project\shopping-website"
+
+$env:API_URL="http://localhost:8080"
+$env:PORT="3000"
+
+npm run dev
+
+Terminal 6 — Dashboard
+cd "C:\Users\yash sharma\Downloads\shop-lb-project\shop-lb-project\admin-dashboard"
+
+$env:API_URL="http://localhost:8080"
+$env:PORT="3001"
+
+npm run dev
+
+33. FINAL LINKS
+SHOPPING WEBSITE
+http://localhost:3000
+
+
+ADMIN DASHBOARD
+http://localhost:3001/admin/login
+
+
+LOAD BALANCER
+http://localhost:8080
+
+
+LOAD BALANCER HEALTH
+http://localhost:8080/health
+
+
+LOAD BALANCER READY
+http://localhost:8080/ready
+
+
+PROMETHEUS
+http://localhost:8080/metrics
+
+
+BACKEND 1 HEALTH
+http://localhost:8001/health
+
+
+BACKEND 2 HEALTH
+http://localhost:8002/health
+
+
+BACKEND 3 HEALTH
+http://localhost:8003/health

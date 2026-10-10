@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ShopLB — Demo Store</title>
+<link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/home" data-link>🛒 Shop<span>LB</span></a>
+  <nav id="nav"></nav>
+</header>
+<main id="app" aria-live="polite"></main>
+<div id="toast" role="status"></div>
+<footer>Every request on this site goes through the Layer 7 load balancer. <span id="served"></span></footer>
+<script src="/config.js"></script>
+<script src="/src/app.js"></script>
+</body>
+</html>

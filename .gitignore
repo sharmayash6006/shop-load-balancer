@@ -1,0 +1,5 @@
+.env
+bin/
+*.test
+go.sum
+node_modules/

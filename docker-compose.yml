@@ -1,0 +1,116 @@
+name: load-balancer-project
+
+x-backend: &backend
+  build: ./backend
+  restart: unless-stopped
+  depends_on:
+    database: { condition: service_healthy }
+  environment: &backend-env
+    DATABASE_URL: postgres://${POSTGRES_USER:-shop}:${POSTGRES_PASSWORD:-shop}@database:5432/${POSTGRES_DB:-shop}?sslmode=disable
+    JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+    BCRYPT_COST: ${BCRYPT_COST:-10}
+    COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    COOKIE_SAMESITE: ${COOKIE_SAMESITE:-lax}
+    LOG_LEVEL: ${LOG_LEVEL:-info}
+  healthcheck:
+    test: ["CMD-SHELL", "wget -qO- http://localhost:$$PORT/health"]
+    interval: 5s
+    timeout: 3s
+    retries: 5
+
+services:
+  database:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    command: ["postgres", "-c", "max_connections=300"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-shop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shop}
+      POSTGRES_DB: ${POSTGRES_DB:-shop}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d:ro   # schema + seed products, run on first start
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-shop} -d ${POSTGRES_DB:-shop}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  backend-1:
+    <<: *backend
+    environment: { <<: *backend-env, BACKEND_ID: backend-1, PORT: "8001" }
+    ports: ["8001:8001"]
+  backend-2:
+    <<: *backend
+    environment: { <<: *backend-env, BACKEND_ID: backend-2, PORT: "8002" }
+    ports: ["8002:8002"]
+  backend-3:
+    <<: *backend
+    environment: { <<: *backend-env, BACKEND_ID: backend-3, PORT: "8003" }
+    ports: ["8003:8003"]
+
+  load-balancer:
+    build: ./load-balancer
+    restart: unless-stopped
+    depends_on:
+      database: { condition: service_healthy }
+    environment:
+      LISTEN_ADDR: ":8080"
+      DATABASE_URL: postgres://${POSTGRES_USER:-shop}:${POSTGRES_PASSWORD:-shop}@database:5432/${POSTGRES_DB:-shop}?sslmode=disable
+      BACKEND_URLS: ${BACKEND_URLS:-http://backend-1:8001,http://backend-2:8002,http://backend-3:8003}
+      BACKEND_WEIGHTS: ${BACKEND_WEIGHTS:-5,3,1}
+      ALGORITHM: ${ALGORITHM:-round_robin}
+      HEALTH_CHECK_INTERVAL: ${HEALTH_CHECK_INTERVAL:-2s}
+      REQUEST_TIMEOUT: ${REQUEST_TIMEOUT:-30s}
+      BACKEND_TIMEOUT: ${BACKEND_TIMEOUT:-10s}
+      CONNECT_TIMEOUT: ${CONNECT_TIMEOUT:-2s}
+      RETRY_COUNT: ${RETRY_COUNT:-2}
+      RATE_LIMIT: ${RATE_LIMIT:-0}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      COOKIE_SAMESITE: ${COOKIE_SAMESITE:-lax}
+      # Browser origins allowed to call the LB with credentials (exact match, never '*').
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:3001}
+    ports: ["8080:8080"]
+    stop_grace_period: 25s
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  shopping-frontend:
+    build: ./shopping-website
+    restart: unless-stopped
+    depends_on: [load-balancer]
+    environment:
+      # Where the BROWSER reaches the load balancer / API entry point (not a Docker-internal name).
+      API_URL: ${SHOP_API_URL:-http://localhost:8080}
+    ports: ["3000:80"]
+
+  admin-dashboard:
+    build: ./admin-dashboard
+    restart: unless-stopped
+    depends_on: [load-balancer]
+    environment:
+      API_URL: ${ADMIN_API_URL:-http://localhost:8080}
+    ports: ["3001:80"]
+
+  # Not started by `docker compose up`. Run with: docker compose run --rm k6 run /tests/ecommerce-test.js
+  k6:
+    image: grafana/k6:latest
+    profiles: ["loadtest"]
+    depends_on: [load-balancer]
+    volumes: ["./load-tests:/tests:ro"]
+    environment:
+      BASE_URL: http://load-balancer:8080
+      VUS: ${VUS:-50}
+      DURATION: ${DURATION:-60s}
+    entrypoint: ["k6"]
+
+volumes:
+  pgdata:
